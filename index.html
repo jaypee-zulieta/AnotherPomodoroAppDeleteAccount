@@ -117,7 +117,7 @@
         width: 100%;
       }
 
-      .btn-google:hover {
+      .btn-google:hover:not(:disabled) {
         background: #f5f5f5;
       }
 
@@ -129,6 +129,21 @@
       .btn-google svg {
         width: 18px;
         height: 18px;
+      }
+
+      .btn-signin {
+        background: #1976d2;
+        color: #fff;
+        width: 100%;
+      }
+
+      .btn-signin:hover:not(:disabled) {
+        background: #1565c0;
+      }
+
+      .btn-signin:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
       }
 
       .btn-delete {
@@ -226,6 +241,26 @@
         letter-spacing: 0.05em;
         margin-bottom: 0.75rem;
       }
+
+      .divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 1.25rem 0;
+        color: #999;
+        font-size: 0.85rem;
+      }
+
+      .divider::before,
+      .divider::after {
+        content: "";
+        flex: 1;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .divider span {
+        padding: 0 0.75rem;
+      }
     </style>
   </head>
   <body>
@@ -247,9 +282,10 @@
         </ul>
       </div>
 
-      <!-- Step 1: Sign in with Google -->
+      <!-- Step 1: Sign in (Google or Email/Password) -->
       <div id="auth-section">
         <p class="section-title">Step 1: Sign In</p>
+
         <button type="button" class="btn-google" id="google-signin-btn">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path
@@ -271,6 +307,32 @@
           </svg>
           Sign in with Google
         </button>
+
+        <div class="divider"><span>or</span></div>
+
+        <form id="email-signin-form">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            class="confirm-input"
+            placeholder="your@email.com"
+            autocomplete="email"
+          />
+
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            class="confirm-input"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+          />
+
+          <button type="submit" class="btn-signin" id="email-signin-btn">
+            Sign in with Email
+          </button>
+        </form>
       </div>
 
       <!-- Step 2: Confirm deletion (hidden until signed in) -->

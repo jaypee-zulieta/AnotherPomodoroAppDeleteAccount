@@ -4,6 +4,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithEmailAndPassword,
   signOut,
   deleteUser,
   onAuthStateChanged,
@@ -33,6 +34,16 @@ const deleteSection = document.getElementById("delete-section");
 const googleSigninBtn = document.getElementById(
   "google-signin-btn"
 ) as HTMLButtonElement | null;
+const emailSigninForm = document.getElementById(
+  "email-signin-form"
+) as HTMLFormElement | null;
+const emailInput = document.getElementById("email") as HTMLInputElement | null;
+const passwordInput = document.getElementById(
+  "password"
+) as HTMLInputElement | null;
+const emailSigninBtn = document.getElementById(
+  "email-signin-btn"
+) as HTMLButtonElement | null;
 const signOutBtn = document.getElementById("sign-out-btn");
 const signedInInfo = document.getElementById("signed-in-info");
 const signedInEmail = document.getElementById("signed-in-email");
@@ -45,11 +56,18 @@ const cancelBtn = document.querySelector<HTMLButtonElement>(".btn-cancel");
 const statusEl = document.getElementById("status");
 
 let currentUser: User | null = null;
+let isSigningIn = false;
 
 function setStatus(message: string, type: "error" | "success" | "") {
   if (!statusEl) return;
   statusEl.textContent = message;
   statusEl.className = `status ${type}`;
+}
+
+function setLoading(loading: boolean) {
+  isSigningIn = loading;
+  if (googleSigninBtn) googleSigninBtn.disabled = loading;
+  if (emailSigninBtn) emailSigninBtn.disabled = loading;
 }
 
 function friendlyErrorMessage(error: unknown): string {
@@ -65,10 +83,20 @@ function friendlyErrorMessage(error: unknown): string {
       return "The Google sign-in popup was blocked by your browser. Please allow popups and try again.";
     case "auth/account-exists-with-different-credential":
       return "This email is already linked to a different sign-in method. Please try again.";
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/user-disabled":
+      return "This account has been disabled. Please contact support.";
+    case "auth/user-not-found":
+      return "No account found with this email address.";
+    case "auth/wrong-password":
+    case "auth/invalid-credential":
+      return "Incorrect email or password. Please try again.";
+    case "auth/too-many-requests":
+      return "Too many failed attempts. Please try again later.";
     case "auth/requires-recent-login":
       return "Your session has expired. Please sign in again to delete your account.";
     case "auth/user-mismatch":
-    case "auth/user-not-found":
       return "Authentication error. Please sign in again.";
     default:
       return "Something went wrong. Please try again.";
@@ -85,21 +113,23 @@ onAuthStateChanged(auth, (user) => {
     if (signedInInfo) signedInInfo.classList.add("visible");
     if (signedInEmail) signedInEmail.textContent = user.email ?? "";
     setStatus("", "");
+    setLoading(false);
   } else {
     // Signed out: show auth section, hide delete section
     if (authSection) authSection.classList.remove("hidden");
     if (deleteSection) deleteSection.classList.add("hidden");
     if (signedInInfo) signedInInfo.classList.remove("visible");
-    if (googleSigninBtn) googleSigninBtn.disabled = false;
     if (confirmInput) confirmInput.value = "";
     if (deleteBtn) deleteBtn.disabled = true;
+    setLoading(false);
   }
 });
 
 // Google Sign-In button
 if (googleSigninBtn) {
   googleSigninBtn.addEventListener("click", async () => {
-    googleSigninBtn.disabled = true;
+    if (isSigningIn) return;
+    setLoading(true);
     setStatus("", "");
 
     try {
@@ -108,7 +138,34 @@ if (googleSigninBtn) {
       // onAuthStateChanged will handle showing the delete section
     } catch (error) {
       setStatus(friendlyErrorMessage(error), "error");
-      googleSigninBtn.disabled = false;
+      setLoading(false);
+    }
+  });
+}
+
+// Email/Password Sign-In form
+if (emailSigninForm && emailInput && passwordInput) {
+  emailSigninForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (isSigningIn) return;
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    if (!email || !password) {
+      setStatus("Please enter both your email and password.", "error");
+      return;
+    }
+
+    setLoading(true);
+    setStatus("", "");
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged will handle showing the delete section
+    } catch (error) {
+      setStatus(friendlyErrorMessage(error), "error");
+      setLoading(false);
     }
   });
 }
