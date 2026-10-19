@@ -10,6 +10,14 @@ import {
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+  writeBatch,
+} from "firebase/firestore";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -24,9 +32,10 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 
-const auth = getAuth();
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 // DOM elements
 const authSection = document.getElementById("auth-section");
@@ -98,9 +107,31 @@ function friendlyErrorMessage(error: unknown): string {
       return "Your session has expired. Please sign in again to delete your account.";
     case "auth/user-mismatch":
       return "Authentication error. Please sign in again.";
+    case "permission-denied":
+      return "You don't have permission to delete your data. Please contact support.";
     default:
       return "Something went wrong. Please try again.";
   }
+}
+
+/**
+ * Delete all tasks belonging to the given user from Firestore.
+ * Uses a batch write for efficiency.
+ */
+async function deleteUserTasks(userId: string): Promise<void> {
+  const tasksQuery = query(
+    collection(db, "tasks"),
+    where("userId", "==", userId)
+  );
+  const snapshot = await getDocs(tasksQuery);
+
+  if (snapshot.empty) return;
+
+  const batch = writeBatch(db);
+  snapshot.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  await batch.commit();
 }
 
 // Track auth state — when signed in, show delete section; when signed out, show sign-in
@@ -201,12 +232,18 @@ if (deleteForm && deleteBtn && confirmInput) {
     }
 
     deleteBtn.disabled = true;
-    setStatus("Deleting your account...", "");
+    setStatus("Deleting your tasks...", "");
 
     try {
+      // 1. Delete all tasks belonging to this user from Firestore
+      await deleteUserTasks(currentUser.uid);
+
+      // 2. Delete the auth account
+      setStatus("Deleting your account...", "");
       await deleteUser(currentUser);
+
       setStatus(
-        "Your account has been permanently deleted. We're sorry to see you go.",
+        "Your account and all associated data have been permanently deleted. We're sorry to see you go.",
         "success"
       );
     } catch (error) {
